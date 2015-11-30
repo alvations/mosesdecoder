@@ -63,7 +63,6 @@ StaticData StaticData::s_instance;
 StaticData::StaticData()
   : m_sourceStartPosMattersForRecombination(false)
   , m_requireSortingAfterSourceContext(false)
-  , m_lmEnableOOVFeature(false)
   , m_isAlwaysCreateDirectTranslationOption(false)
   , m_currentWeightSetting("default")
   , m_treeStructure(NULL)
@@ -279,12 +278,10 @@ StaticData::
 ini_oov_options()
 {
   // unknown word processing
-  m_parameter->SetParameter(m_dropUnknown, "drop-unknown", false );
-  m_parameter->SetParameter(m_markUnknown, "mark-unknown", false );
-  m_parameter->SetParameter<string>(m_unknownWordPrefix, "unknown-word-prefix", "UNK" );
-  m_parameter->SetParameter<string>(m_unknownWordSuffix, "unknown-word-suffix", "" );
-
-  m_parameter->SetParameter(m_lmEnableOOVFeature, "lmodel-oov-feature", false);
+  // m_parameter->SetParameter(m_dropUnknown, "drop-unknown", false );
+  // m_parameter->SetParameter(m_markUnknown, "mark-unknown", false );
+  // m_parameter->SetParameter<string>(m_unknownWordPrefix, "unknown-word-prefix", "UNK" );
+  // m_parameter->SetParameter<string>(m_unknownWordSuffix, "unknown-word-suffix", "" );
 
   //source word deletion
   m_parameter->SetParameter(m_wordDeletionEnabled, "phrase-drop-allowed", false );
@@ -303,7 +300,6 @@ ini_zombie_options()
 
 bool StaticData::LoadData(Parameter *parameter)
 {
-  ResetUserTime();
   m_parameter = parameter;
 
   const PARAM_VEC *params;
@@ -457,6 +453,8 @@ void StaticData::LoadDecodeGraphs()
   params = m_parameter->GetParam("mapping");
   if (params && params->size()) {
     mappingVector = *params;
+  } else {
+    mappingVector.assign(1,"0 T 0");
   }
 
   params = m_parameter->GetParam("max-chart-span");

@@ -20,8 +20,15 @@
 namespace sapt
 {
   
-enum sampling_method { full_coverage, random_sampling, ranked_sampling, ranked_sampling2 };
-
+enum 
+sampling_method 
+  { 
+    full_coverage, 
+    random_sampling, 
+    ranked_sampling, 
+    ranked_sampling2 
+  };
+  
 typedef ttrack::Position TokenPosition;
 class CandidateSorter
 {
@@ -45,7 +52,7 @@ BitextSampler : public Moses::reference_counter
   // const members
   // SPTR<bitext const> const   m_bitext; // keep bitext alive while I am 
   // should be an 
-  iptr<bitext const> const       m_bitext; // keep bitext alive as long as I am 
+  SPTR<bitext const> const       m_bitext; // keep bitext alive as long as I am 
   size_t             const         m_plen; // length of lookup phrase
   bool               const          m_fwd; // forward or backward direction?
   SPTR<tsa const>    const         m_root; // root of suffix array
@@ -74,7 +81,7 @@ BitextSampler : public Moses::reference_counter
 public:
   BitextSampler(BitextSampler const& other);
   BitextSampler const& operator=(BitextSampler const& other);
-  BitextSampler(bitext const*  const bitext, 
+  BitextSampler(SPTR<bitext const> const& bitext, 
                 typename bitext::iter const& phrase,
                 SPTR<SamplingBias const> const& bias, 
                 size_t const min_samples, 
@@ -175,7 +182,7 @@ flip_coin(id_type & sid, ushort & offset)
 
 template<typename Token>
 BitextSampler<Token>::
-BitextSampler(Bitext<Token> const* const bitext, 
+BitextSampler(SPTR<Bitext<Token> const> const& bitext, 
               typename bitext::iter const& phrase,
               SPTR<SamplingBias const> const& bias, size_t const min_samples, size_t const max_samples,
               sampling_method const method)
@@ -268,7 +275,7 @@ consider_sample(TokenPosition const& p)
   bitvector full_aln(100*100);
   PhraseExtractionRecord 
     rec(p.sid, p.offset, p.offset + m_plen, !m_fwd, &aln, &full_aln);
-  int docid = m_bias ? m_bias->GetClass(p.sid) : -1;
+  int docid = m_bias ? m_bias->GetClass(p.sid) : m_bitext->sid2did(p.sid);
   if (!m_bitext->find_trg_phr_bounds(rec))
     { // no good, probably because phrase is not coherent
       m_stats->count_sample(docid, 0, rec.po_fwd, rec.po_bwd);

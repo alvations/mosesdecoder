@@ -95,10 +95,10 @@ protected:
   size_t m_latticeSamplesSize;
 
   std::string  m_latticeSamplesFilePath;
-  bool m_dropUnknown; //! false = treat unknown words as unknowns, and translate them as themselves; true = drop (ignore) them
-  bool m_markUnknown; //! false = treat unknown words as unknowns, and translate them as themselves; true = mark and (ignore) them
-  std::string m_unknownWordPrefix;
-  std::string m_unknownWordSuffix;
+  // bool m_dropUnknown; //! false = treat unknown words as unknowns, and translate them as themselves; true = drop (ignore) them
+  // bool m_markUnknown; //! false = treat unknown words as unknowns, and translate them as themselves; true = mark and (ignore) them
+  // std::string m_unknownWordPrefix;
+  // std::string m_unknownWordSuffix;
   bool m_wordDeletionEnabled;
 
   bool m_disableDiscarding;
@@ -116,7 +116,6 @@ protected:
   std::pair<std::string,std::string> m_xmlBrackets; //! strings to use as XML tags' opening and closing brackets. Default are "<" and ">"
 
   size_t m_lmcache_cleanup_threshold; //! number of translations after which LM claenup is performed (0=never, N=after N translations; default is 1)
-  bool m_lmEnableOOVFeature;
 
   bool m_isAlwaysCreateDirectTranslationOption;
   //! constructor. only the 1 static variable can be created
@@ -160,9 +159,9 @@ protected:
 
   //! load decoding steps
   void LoadDecodeGraphs();
-  void LoadDecodeGraphsOld(const std::vector<std::string> &mappingVector, 
+  void LoadDecodeGraphsOld(const std::vector<std::string> &mappingVector,
                            const std::vector<size_t> &maxChartSpans);
-  void LoadDecodeGraphsNew(const std::vector<std::string> &mappingVector, 
+  void LoadDecodeGraphsNew(const std::vector<std::string> &mappingVector,
                            const std::vector<size_t> &maxChartSpans);
 
   void NoCache();
@@ -245,26 +244,26 @@ public:
   const std::vector<FactorType> &GetInputFactorOrder() const {
     return m_options.input.factor_order;
   }
-  
+
   const std::vector<FactorType> &GetOutputFactorOrder() const {
     return m_options.output.factor_order;
   }
-  
+
   inline bool GetSourceStartPosMattersForRecombination() const {
     return m_sourceStartPosMattersForRecombination;
   }
-  inline bool GetDropUnknown() const {
-    return m_dropUnknown;
-  }
-  inline bool GetMarkUnknown() const {
-    return m_markUnknown;
-  }
-  inline std::string GetUnknownWordPrefix() const {
-    return m_unknownWordPrefix;
-  }
-  inline std::string GetUnknownWordSuffix() const {
-    return m_unknownWordSuffix;
-  }
+  // inline bool GetDropUnknown() const {
+  //   return m_dropUnknown;
+  // }
+  // inline bool GetMarkUnknown() const {
+  //   return m_markUnknown;
+  // }
+  // inline std::string GetUnknownWordPrefix() const {
+  //   return m_unknownWordPrefix;
+  // }
+  // inline std::string GetUnknownWordSuffix() const {
+  //   return m_unknownWordSuffix;
+  // }
   inline bool GetDisableDiscarding() const {
     return m_disableDiscarding;
   }
@@ -364,10 +363,6 @@ public:
 
   size_t GetLMCacheCleanupThreshold() const {
     return m_lmcache_cleanup_threshold;
-  }
-
-  bool GetLMEnableOOVFeature() const {
-    return m_lmEnableOOVFeature;
   }
 
   const std::string& GetOutputUnknownsFile() const {

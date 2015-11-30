@@ -103,7 +103,7 @@ ChartHypothesis::~ChartHypothesis()
 void ChartHypothesis::GetOutputPhrase(Phrase &outPhrase) const
 {
   FactorType placeholderFactor = StaticData::Instance().options().input.placeholder_factor;
-  
+
   for (size_t pos = 0; pos < GetCurrTargetPhrase().GetSize(); ++pos) {
     const Word &word = GetCurrTargetPhrase().GetWord(pos);
     if (word.IsNonTerminal()) {
@@ -257,7 +257,6 @@ void ChartHypothesis::CleanupArcList()
    * so we'll keep all of arc list if nedd distinct n-best list
    */
   AllOptions const& opts = StaticData::Instance().options();
-  const StaticData &staticData = StaticData::Instance();
   size_t nBestSize = opts.nbest.nbest_size;
   bool distinctNBest = (opts.nbest.only_distinct
                         || opts.mbr.enabled

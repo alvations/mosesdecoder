@@ -82,7 +82,7 @@ namespace Moses
     // * Don't use features that depend on generation steps that won't be run
     //   yet at extract time
     SetFeaturesToApply();
-    Register();
+    // Register();
   }
 
   void
@@ -721,7 +721,7 @@ namespace Moses
         if (foo) { sfix = *foo; sfix->wait(); }
         else 
           {
-            BitextSampler<Token> s(btfix.get(), mfix, context->bias, 
+            BitextSampler<Token> s(btfix, mfix, context->bias, 
                                    m_min_sample_size, 
                                    m_default_sample_size, 
                                    m_sampling_method);
@@ -864,7 +864,7 @@ namespace Moses
     SPTR<ContextForQuery> context = scope->get<ContextForQuery>(btfix.get(), true);
     boost::unique_lock<boost::shared_mutex> ctxlock(context->lock);
 
-    if (localcache) std::cerr << "have local cache " << std::endl;
+    // if (localcache) std::cerr << "have local cache " << std::endl;
     // std::cerr << "BOO at " << HERE << std::endl;
     if (!localcache)
       {
@@ -910,8 +910,9 @@ namespace Moses
         uint64_t pid = mfix.getPid();
         if (!context->cache1->get(pid))
           {
-            BitextSampler<Token> s(btfix.get(), mfix, context->bias, 
-                                   m_min_sample_size, m_default_sample_size, m_sampling_method);
+            BitextSampler<Token> s(btfix, mfix, context->bias, 
+                                   m_min_sample_size, m_default_sample_size, 
+                                   m_sampling_method);
             if (*context->cache1->get(pid, s.stats()) == s.stats())
               m_thread_pool->add(s);
           }
