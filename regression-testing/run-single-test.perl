@@ -176,15 +176,21 @@ sub exec_moses_server {
   } elsif ($pid == 0) {
       setpgrp(0, 0);
       warn "Starting Moses server on port $serverport ...\n";
-      ($o, $ec, $sig) = run_command("$decoder --server --server-port $serverport -f $conf -verbose 2 --server-log $results/run.stderr.server 2> $results/run.stderr ");
+      my $cmd = "$decoder --server --server-port $serverport -f $conf -verbose 2 --server-log $results/run.stderr.server 2> $results/run.stderr ";
+      open  CMD, ">$results/cmd_line";
+      print CMD "$cmd\n";
+      close CMD;
+      ($o, $ec, $sig) = run_command($cmd);
       exit;
       # this should not be reached unless the server fails to start
   }
   while( 1==1 ) # wait until the server is listening for requests
   {
-    sleep 5;
-    my $str = `grep "Listening on port $serverport" $results/run.stderr`;
-    last if($str =~ /Listening/);
+      sleep 5;
+      my $res = waitpid($pid, WNOHANG);
+      die "Moses crashed or aborted! Check $results/run.stderr for error messages.\n" if ($res);
+      my $str = `grep "Listening on port $serverport" $results/run.stderr`;
+      last if($str =~ /Listening/);
   }
   my $proxy = XMLRPC::Lite->proxy($url);
   warn "Opening file $input to write to $results\n";
