@@ -134,7 +134,7 @@ def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores,
             
 def pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
                metric=nltk_bleu_scores, n_iterations,
-               n_samples=5000, n_pairs=1000):
+               n_samples=5000, n_pairs=1000, regressor=LinearRegression):
     
     moses_cmd = "{} -f {} -n-best-list tmpnbest {} < {}"
     references = list(read_plaintext(reference_file))
@@ -146,7 +146,8 @@ def pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
         # Read the nbest-list and references into python object.
         nbestlist = read_nbestlist('tmpnbest')
         # Retrieve the new set of parameters given the nbestlist.
-        new_params = pro_one_cycle(references, nbestlist, metric)
+        new_params = pro_one_cycle(references, nbestlist, metric, 
+                                   n_samples, n_pairs, regressor)
         # Create a new moses.ini with new parameters.
         pass # Too tired to code now at 3.30am... BRB!
         
