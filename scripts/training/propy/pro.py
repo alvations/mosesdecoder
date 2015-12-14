@@ -5,6 +5,8 @@
 
 """
 This is a python implementation of PRO tuning using scikit-learn classifier(s).
+This implementation is largely based on Chahuneau et al. (2012) pycdec parameter 
+estimation code (from http://victor.chahuneau.fr/pub/pycdec/)
 """
 
 import io, re, heapq
@@ -23,6 +25,8 @@ from nltk.translate import bleu
 ############################################################################
 moses_param_pattern = re.compile(r'''([^\s=]+)=\s*((?:[^\s=]+(?:\s|$))*)''')
 
+# This is only used for testing moses.ini manipulation.
+# The PRO code reads the initial parameter values directly from the moses.ini
 default_moses_params = {
 'LexicalReordering0': [0.3] * 6, 
 'TranslationModel0': [0.2] * 4,
@@ -169,6 +173,7 @@ def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores,
                n_samples=5000, n_pairs=1000, regressor=LinearRegression):
     # The DictVectorizer converts dictionaries into sparse vectors
     vectorizer = DictVectorizer()
+    # Find out the no. of parameters.
     num_params = len(nbestlist[0][0].params)
     # Collect training pairs
     X, Y = [], []
@@ -232,6 +237,9 @@ nbestlist_file = nbestlist_ru = nltk_translate + 'mertfiles/dev.100best.ru'
 sources = list(read_plaintext(source_file))
 references = list(read_plaintext(reference_file))
 nbestlist = read_nbestlist(nbestlist_file)
+
+new_weights = pro_one_cycle(references, nbestlist)
+print (update_paramters(default_moses_params, new_weights))
 
 '''
 new_weights = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
