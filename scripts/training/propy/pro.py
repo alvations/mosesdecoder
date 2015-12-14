@@ -18,15 +18,19 @@ from sklearn.linear_model import LinearRegression
 
 from nltk.translate import bleu
 
+############################################################################
+# Moses related manipulations 
+############################################################################
 moses_param_pattern = re.compile(r'''([^\s=]+)=\s*((?:[^\s=]+(?:\s|$))*)''')
 
-def read_params_from_moses_ini(mosesinifile):
-    parameters_string = ""
-    for line in reversed(open(mosesinifile, 'r').readlines()):
-        if line.startswith('[weight]'):
-            return parse_parameters(parameters_string.strip())
-        else:
-            parameters_string+=line.strip() + ' ' 
+default_moses_params = {
+'LexicalReordering0': [0.3] * 6, 
+'TranslationModel0': [0.2] * 4,
+'LM0': [0.5], 
+'PhrasePenalty0': [0.2], 
+'Distortion0': [0.3], 
+'WordPenalty0': [-1.0]}
+            
 
 def parse_parameters(parameters_string, to_unroll=True):
     """
@@ -54,6 +58,65 @@ def unroll_parameters(params):
         param_vec+=params[p]
     return np.array(param_vec)
 
+def update_paramters(parameters, new_unrolled_params):
+    """
+    >>> new_weights = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
+    >>> update_paramters(default_moses_params, new_weights)
+    {'Distortion0': [0.01], 'WordPenalty0': [0.14], 'TranslationModel0': [0.1, 0.11, 0.12, 0.13], 'LM0': [0.02], 'PhrasePenalty0': [0.09], 'LexicalReordering0': [0.03, 0.04, 0.05, 0.06, 0.07, 0.08]}
+    """
+    i = 0
+    for p in sorted(parameters):
+        if p == 'UnknownWordPenalty0': # No change to unknown words parameter.
+            continue
+        for j, _ in enumerate(parameters[p]):
+            parameters[p][j] = new_unrolled_params[i]
+            i+=1
+    return parameters
+
+def params_to_string(parameters):
+    """
+    >>> new_weights = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
+    >>> params_to_string(update_paramters(default_moses_params, new_weights))
+    Distortion0=0.01
+    LM0=0.02
+    LexicalReordering0=0.03 0.04 0.05 0.06 0.07 0.08
+    PhrasePenalty0=0.09
+    TranslationModel0=0.1 0.11 0.12 0.13
+    WordPenalty0=0.14
+    """
+    pstr = []
+    for p in sorted(parameters):
+        pstr.append(p + '=' + ' '.join(map(str,parameters[p])))
+    return "\n".join(pstr)
+
+def overwrite_mosesini_weights(old_mosesini_file, new_moses_ini_file,
+                               new_weights):
+    old_weights = ''
+    with open(old_mosesini_file, 'r') as fin, open(new_moses_ini_file, 'w') as fout:
+        for line in fin:
+            fout.write(line)
+            if line.startswith('[weight]'):
+                break
+        for line in fin:
+            old_weights+=line.strip() + ' '
+        old_weights = parse_parameters(old_weights,to_unroll=False)
+        param_str = params_to_string(update_paramters(old_weights, new_weights))
+        fout.write(param_str)
+
+
+############################################################################
+# Metrics.
+# All metric functions MUST return a list of floats and nothing else.
+############################################################################
+        
+def nltk_bleu_scores(reference, nbest_hypotheses):
+    return [bleu([reference], hyp.translation, weights=[0.25]*4) for 
+            hyp in nbest_hypotheses]
+
+        
+############################################################################
+# PRO Implementation.
+############################################################################
 
 def read_plaintext(infile): 
     with io.open(infile, 'r', encoding='utf8') as fin:
@@ -101,10 +164,6 @@ def get_pairs(nbest_hypotheses, scores, n_samples=10000, n_pairs=10000,
         yield x, y # In the positive space
         yield -1 * x, -1 * y # In the negative space
 
-def nltk_bleu_scores(reference, nbest_hypotheses):
-    return [bleu([reference], hyp.translation, weights=[0.25]*4) for 
-            hyp in nbest_hypotheses]
-
 
 def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores, 
                n_samples=5000, n_pairs=1000, regressor=LinearRegression):
@@ -120,7 +179,7 @@ def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores,
         #print (scores)
         for x, y in get_pairs(nbest_hypotheses, scores, n_samples, n_pairs):
             # Converts weights into a dictionary where 
-            # key = weights ID ; value = difference in paramter weight.
+            # key = weights ID ; value = difference in parameter weight.
             x = dict(zip(range(num_params), x))
             X.append(x)
             Y.append(y)
@@ -132,32 +191,40 @@ def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores,
     # Return the weights with the learned model
     return model.coef_
             
-def pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
-               n_iterations, metric=nltk_bleu_scores,
-               n_samples=5000, n_pairs=1000, regressor=LinearRegression):
+            
+def moses_pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
+                     tuning_dir, n_iterations, metric=nltk_bleu_scores,
+                     n_samples=5000, n_pairs=1000, regressor=LinearRegression):
     
-    moses_cmd = "{} -f {} -n-best-list tmpnbest {} < {}"
+    moses_cmd = "{} -f {} -n-best-list {}/tmpnbest.run{} {} < {}"
     references = list(read_plaintext(reference_file))
     
     for num_iter in range(n_iterations):
-        # Generate the nbest-list file given the moses.ini 
-        cmd = moses_cmd.format(moses_bin, moses_ini, n, source_file)
+        # Generate the nbest-list file given the moses.ini
+        cmd = moses_cmd.format(moses_bin, moses_ini, tuning_dir, 
+                               num_iter, n, source_file)
         os.system(cmd)
-        # Read the nbest-list and references into python object.
-        nbestlist = read_nbestlist('tmpnbest')
+        # Read the nbest-list into python object.
+        nbestlist_file = '{}/tmpnbest.run{}'.format(tuning_dir, num_iter)
+        nbestlist = read_nbestlist(nbestlist_file)
         # Retrieve the new set of parameters given the nbestlist.
         new_params = pro_one_cycle(references, nbestlist, metric, 
                                    n_samples, n_pairs, regressor)
         # Create a new moses.ini with new parameters.
-        pass # Too tired to code now at 3.30am... BRB!
-        
-    
-    
+        new_moses_ini = 'moses.prorun{}.ini'.format(num_iter) 
+        overwrite_mosesini_weights(moses_ini, new_moses_ini, new_params)
+        moses_ini = new_moses_ini
 
+        
+            
+    
+############################################################################
+# Main, Demo, Argparse, etc.
+############################################################################
 
 
 nltk_translate = '/home/alvas/git/nltk/nltk/translate/'
-mosesinifile = nltk_translate + 'mertfiles/moses.ini'
+mosesini_file = nltk_translate + 'mertfiles/moses.ini'
 source_file = deven = nltk_translate + 'mertfiles/dev.en'
 reference_file = devru = nltk_translate + 'mertfiles/dev.ru'
 nbestlist_file = nbestlist_ru = nltk_translate + 'mertfiles/dev.100best.ru' 
@@ -166,6 +233,11 @@ sources = list(read_plaintext(source_file))
 references = list(read_plaintext(reference_file))
 nbestlist = read_nbestlist(nbestlist_file)
 
-ref_len = len(references)
-
-print (pro_one_cycle(references, nbestlist))
+'''
+new_weights = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
+overwrite_mosesini_weights(mosesini_file, 'new_moses.ini',
+                               new_weights)
+new_weights = pro_one_cycle(references, nbestlist)
+overwrite_mosesini_weights('new_moses.ini', 'newer_moses.ini',
+                               new_weights)
+'''
