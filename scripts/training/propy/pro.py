@@ -133,7 +133,7 @@ def pro_one_cycle(references, nbestlist, metric=nltk_bleu_scores,
     return model.coef_
             
 def pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
-               metric=nltk_bleu_scores, n_iterations,
+               n_iterations, metric=nltk_bleu_scores,
                n_samples=5000, n_pairs=1000, regressor=LinearRegression):
     
     moses_cmd = "{} -f {} -n-best-list tmpnbest {} < {}"
@@ -168,4 +168,4 @@ nbestlist = read_nbestlist(nbestlist_file)
 
 ref_len = len(references)
 
-pro_one_cycle(references, nbestlist)
+print (pro_one_cycle(references, nbestlist))
