@@ -3,8 +3,8 @@
 """BLEU.
 
 Usage:
-  bleu.py --reference FILE --translation FILE [--weights STR] [--smooth STR] [--smooth-epsilon STR] [--smooth-alpha STR] [--smooth-k STR] [--segment-level]
-  bleu.py -r FILE -t FILE [-w STR] [--smooth STR] [--segment-level]
+  pybleu.py --reference FILE --translation FILE [--weights STR] [--smooth STR] [--smooth-epsilon STR] [--smooth-alpha STR] [--smooth-k STR] [--segment-level]
+  pybleu.py -r FILE -t FILE [-w STR] [--smooth STR] [--segment-level]
   
 Options:
   -h --help              Show this screen.
