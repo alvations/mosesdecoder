@@ -208,7 +208,7 @@ def moses_pro_tuning(source_file, reference_file, moses_ini, n, moses_bin,
         # Generate the nbest-list file given the moses.ini
         cmd = moses_cmd.format(moses_bin, moses_ini, tuning_dir, 
                                num_iter, n, source_file)
-        os.system(cmd)
+        Popen(cmd, shell=True).wait()
         # Read the nbest-list into python object.
         nbestlist_file = '{}/tmpnbest.run{}'.format(tuning_dir, num_iter)
         nbestlist = read_nbestlist(nbestlist_file)
@@ -240,6 +240,17 @@ nbestlist = read_nbestlist(nbestlist_file)
 
 new_weights = pro_one_cycle(references, nbestlist)
 print (update_paramters(default_moses_params, new_weights))
+
+moses_cmd = "{} -f {} -n-best-list {}/tmpnbest.run{} {} < {}"
+
+
+str("{moses_chart} -config {moses_ini} " 
+"-n-best-list {tuning_dir}/tmpnbest.run{num_run} " 
+"{nbest_n} -max-chart-span {max_char_span} -threads {num_threads} "
+"< {input_file} 2> tmpbest.run{num_run}.log")
+
+# ${MOSES_BIN_DIR}/moses_chart -config ${MODEL_DIR}.filtered/test/moses.ini -max-chart-span 1000 -threads ${JOBS} < ${TEST} > ${outfile} 2> ${outfile}.log 
+
 
 '''
 new_weights = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]

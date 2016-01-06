@@ -3,8 +3,8 @@
 """BLEU.
 
 Usage:
-  pybleu.py --reference FILE --translation FILE [--weights STR] [--smooth STR] [--smooth-epsilon STR] [--smooth-alpha STR] [--smooth-k STR] [--segment-level]
-  pybleu.py -r FILE -t FILE [-w STR] [--smooth STR] [--segment-level]
+  bleu.py --reference FILE --translation FILE [--weights STR] [--smooth STR] [--smooth-epsilon STR] [--smooth-alpha STR] [--smooth-k STR] [--segment-level]
+  bleu.py -r FILE -t FILE [-w STR] [--smooth STR] [--segment-level]
   
 Options:
   -h --help              Show this screen.
@@ -12,7 +12,7 @@ Options:
   -t --translation FILE  hypothesis file (Complusory)
   -w --weights STR       weights [default: 0.25 0.25 0.25 0.25]
   --segment-level        prints segment level scores
-  --smooth STR           smoothens segment level scores
+  --smooth STR           smoothens segment level scores [default: 0]
   --smooth-epsilon STR   empirical smoothing parameter for method 1 [default: 0.1]
   --smooth-k STR         empirical smoothing parameter for method 4 [default: 5]
   --smooth-alpha STR     empirical smoothing parameter for method 6 [default: 5]
@@ -60,8 +60,7 @@ def modified_precision(references, hypothesis, n):
     
     
 def corpus_bleu(list_of_references, hypotheses, weights=(0.25, 0.25, 0.25, 0.25),
-                segment_level=False, smoothing=0, epsilon=1, alpha=1, 
-                k=5):
+                segment_level=False, smoothing=0, epsilon=0.1, alpha=1, k=5):
     # Initialize the numbers.
     p_numerators = Counter() # Key = ngram order, and value = no. of ngram matches.
     p_denominators = Counter() # Key = ngram order, and value = no. of ngram in ref.
@@ -128,7 +127,7 @@ def chen_and_cherry(references, hypothesis, p_n, hyp_len,
         return p_n
     # Smoothing method 1: Add *epsilon* counts to precision with 0 counts.
     if smoothing == 1:
-        return [Fraction(p_i.numerator + epsilon, p_i.denominator) 
+        return [((p_i.numerator + epsilon) / p_i.denominator) 
                 if p_i.numerator == 0 else p_i for p_i in p_n]
     # Smoothing method 2: Add 1 to both numerator and denominator (Lin and Och 2004)
     if smoothing == 2:
@@ -211,6 +210,14 @@ def sentence_bleu_nbest(reference, hypotheses, weights=(0.25, 0.25, 0.25, 0.25),
         _bp = min(math.exp(1 - ref_len / hyp_len), 1.0) 
         yield _bp * math.exp(math.fsum(segment_pn))
 
+
+def bleu_from_file(reference_file, hypothesis_file):
+    with io.open(reference_file, 'r', encoding='utf8') as reffin, \
+    io.open(hypothesis_file, 'r', encoding='utf8') as hypfin:
+        list_of_references = ((r.split(),) for r in reffin)
+        hypotheses = (h.split() for h in hypfin)
+        return corpus_bleu(list_of_references, hypotheses)[0] * 100
+    
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='BLEU version 0.0.1')
