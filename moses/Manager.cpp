@@ -1455,7 +1455,6 @@ SentenceStats& Manager::GetSentenceStats() const
 
 void Manager::OutputBest(OutputCollector *collector)  const
 {
-  const StaticData &staticData = StaticData::Instance();
   long translationId = m_source.GetTranslationId();
 
   Timer additionalReportingTime;
@@ -1505,7 +1504,7 @@ void Manager::OutputBest(OutputCollector *collector)  const
         OutputSurface(out,*bestHypo, true);
         if (options()->output.PrintAlignmentInfo) {
           out << "||| ";
-          bestHypo->OutputAlignment(out, options()->output.WA_SortOrder);
+          bestHypo->OutputAlignment(out, true);
         }
 
         IFVERBOSE(1) {
@@ -1699,7 +1698,7 @@ OutputSurface(std::ostream &out, Hypothesis const& edge, bool const recursive) c
   }
 
   bool markUnknown = options()->unk.mark;
-  std::string const& fd = options()->output.FactorDelimiter;
+  std::string const& fd = options()->output.factor_delimiter;
 
   TargetPhrase const& phrase = edge.GetCurrTargetPhrase();
   size_t size = phrase.GetSize();
@@ -1724,8 +1723,8 @@ OutputSurface(std::ostream &out, Hypothesis const& edge, bool const recursive) c
     out << *factor;
     for (size_t i = 1 ; i < outputFactorOrder.size() ; i++) {
       const Factor *factor = phrase.GetFactor(pos, outputFactorOrder[i]);
-      UTIL_THROW_IF2(factor==NULL,"No factor "<<i<<" at position "<< pos);
-      out << fd << *factor;
+      if (factor) out << fd << *factor;
+      else        out << fd << UNKNOWN_FACTOR;
     }
 
     if(markUnknown && word.IsOOV()) {

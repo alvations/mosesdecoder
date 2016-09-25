@@ -71,6 +71,8 @@ using namespace Moses;
 
 namespace Moses
 {
+//extern size_t g_numHypos;
+
 void OutputFeatureWeightsForHypergraph(std::ostream &outputSearchGraphStream)
 {
   outputSearchGraphStream.setf(std::ios::fixed);
@@ -159,7 +161,9 @@ int
 run_as_server()
 {
 #ifdef HAVE_XMLRPC_C
-  kill(getppid(),SIGALRM);
+  if (params.GetParam("daemon")) {
+    kill(getppid(),SIGALRM);
+  }
   MosesServer::Server server(params);
   return server.run(); // actually: don't return. see Server::run()
 #else
@@ -292,9 +296,11 @@ batch_run()
   pool.Stop(true); //flush remaining jobs
 #endif
 
+//  cerr << "g_numHypos=" << Moses::g_numHypos << endl;
+
   FeatureFunction::Destroy();
 
-  IFVERBOSE(1) util::PrintUsage(std::cerr);
+  IFVERBOSE(0) util::PrintUsage(std::cerr);
 
 #ifndef EXIT_RETURN
   //This avoids that destructors are called (it can take a long time)

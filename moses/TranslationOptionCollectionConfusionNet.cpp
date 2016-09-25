@@ -21,12 +21,13 @@ namespace Moses
 /** constructor; just initialize the base class */
 TranslationOptionCollectionConfusionNet::
 TranslationOptionCollectionConfusionNet(ttasksptr const& ttask,
-                                        const ConfusionNet &input,
-                                        size_t maxNoTransOptPerCoverage,
-                                        float translationOptionThreshold)
-  : TranslationOptionCollection(ttask,input, maxNoTransOptPerCoverage,
-                                translationOptionThreshold)
+                                        const ConfusionNet &input)
+// , size_t maxNoTransOptPerCoverage, float translationOptionThreshold)
+  : TranslationOptionCollection(ttask,input)//
+  // , maxNoTransOptPerCoverage, translationOptionThreshold)
 {
+  size_t maxNoTransOptPerCoverage = ttask->options()->search.max_trans_opt_per_cov;
+  float translationOptionThreshold = ttask->options()->search.trans_opt_threshold;
   // Prefix checkers are phrase dictionaries that provide a prefix check
   // to indicate that a phrase table entry with a given prefix exists.
   // If no entry with the given prefix exists, there is no point in
@@ -62,7 +63,8 @@ TranslationOptionCollectionConfusionNet(ttasksptr const& ttask,
       const ScorePair &scores = col[i].second;
       ScorePair *inputScore = new ScorePair(scores);
 
-      InputPath *path = new InputPath(ttask, subphrase, labels, range, NULL, inputScore);
+      InputPath* path = new InputPath(ttask.get(), subphrase, labels,
+                                      range, NULL, inputScore);
       list.push_back(path);
 
       m_inputPathQueue.push_back(path);
@@ -113,7 +115,8 @@ TranslationOptionCollectionConfusionNet(ttasksptr const& ttask,
           ScorePair *inputScore = new ScorePair(*prevInputScore);
           inputScore->PlusEquals(scores);
 
-          InputPath *path = new InputPath(ttask, subphrase, labels, range, &prevPath, inputScore);
+          InputPath *path = new InputPath(ttask.get(), subphrase, labels, range,
+                                          &prevPath, inputScore);
           list.push_back(path);
 
           m_inputPathQueue.push_back(path);

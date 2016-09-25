@@ -64,7 +64,7 @@ Run()
   
   Moses::StaticData const& SD = Moses::StaticData::Instance();
 
-  if (SD.IsSyntax())
+  if (is_syntax(m_options->search.algo))
     run_chart_decoder();
   else
     run_phrase_decoder();
@@ -233,6 +233,10 @@ check(std::map<std::string, xmlrpc_c::value> const& param,
 {
   std::map<std::string, xmlrpc_c::value>::const_iterator m = param.find(key);
   if(m == param.end()) return false;
+
+  if (m->second.type() == xmlrpc_c::value::TYPE_BOOLEAN)
+    return xmlrpc_c::value_boolean(m->second);
+
   std::string val = string(xmlrpc_c::value_string(m->second));
   if(val == "true" || val == "True" || val == "TRUE" || val == "1") return true;
   return false;
@@ -317,7 +321,11 @@ parse_request(std::map<std::string, xmlrpc_c::value> const& params)
   // 	for (size_t i = 1; i < tmp.size(); i += 2)
   // 	  m_bias[xmlrpc_c::value_int(tmp[i-1])] = xmlrpc_c::value_double(tmp[i]);
   //   }
-  m_source.reset(new Sentence(m_options,0,m_source_string));
+  if (is_syntax(m_options->search.algo)) {
+    m_source.reset(new Sentence(m_options,0,m_source_string));
+  } else {
+    m_source.reset(new Sentence(m_options,0,m_source_string));
+  }
 } // end of Translationtask::parse_request()
 
 
@@ -325,16 +333,12 @@ void
 TranslationRequest::
 run_chart_decoder()
 {
-  Moses::TreeInput tinput(m_options);
-  istringstream buf(m_source_string + "\n");
-  tinput.Read(buf);
-  
   Moses::ChartManager manager(this->self());
   manager.Decode();
 
   const Moses::ChartHypothesis *hypo = manager.GetBestHypothesis();
   ostringstream out;
-  outputChartHypo(out,hypo);
+  if (hypo) outputChartHypo(out,hypo);
 
   m_target_string = out.str();
   m_retData["text"] = xmlrpc_c::value_string(m_target_string);

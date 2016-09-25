@@ -50,14 +50,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef WITH_THREADS
 #include <boost/thread.hpp>
 #endif
+#ifdef HAVE_CMPH
+#include "moses/TranslationModel/CompactPT/PhraseDictionaryCompact.h"
+#endif
+#if defined HAVE_CMPH
+#include "moses/TranslationModel/CompactPT/LexicalReorderingTableCompact.h"
+#endif
 
 using namespace std;
 using namespace boost::algorithm;
 
 namespace Moses
 {
-bool g_mosesDebug = false;
-
 StaticData StaticData::s_instance;
 
 StaticData::StaticData()
@@ -65,6 +69,7 @@ StaticData::StaticData()
   , m_requireSortingAfterSourceContext(false)
   , m_currentWeightSetting("default")
   , m_treeStructure(NULL)
+  , m_coordSpaceNextID(1)
 {
   Phrase::InitializeMemPool();
 }
@@ -122,19 +127,10 @@ bool
 StaticData
 ::ini_output_options()
 {
-  const PARAM_VEC *params;
-
   // verbose level
   m_parameter->SetParameter(m_verboseLevel, "verbose", (size_t) 1);
-
-
-
   m_parameter->SetParameter<string>(m_outputUnknownsFile,
                                     "output-unknowns", "");
-
-  m_parameter->SetParameter<long>(m_startTranslationId,
-                                  "start-translation-id", 0);
-
   return true;
 }
 
@@ -187,7 +183,7 @@ bool StaticData::LoadData(Parameter *parameter)
   if (is_syntax(m_options->search.algo))
     m_options->syntax.LoadNonTerminals(*parameter, FactorCollection::Instance());
 
-  if (IsSyntax())
+  if (is_syntax(m_options->search.algo))
     LoadChartDecodingParameters();
 
   // ORDER HERE MATTERS, SO DON'T CHANGE IT UNLESS YOU KNOW WHAT YOU ARE DOING!
@@ -202,13 +198,14 @@ bool StaticData::LoadData(Parameter *parameter)
   // threading etc.
   if (!ini_performance_options()) return false;
 
-  // Compact phrase table and reordering model
-  m_parameter->SetParameter(m_minphrMemory, "minphr-memory", false );
-  m_parameter->SetParameter(m_minlexrMemory, "minlexr-memory", false );
-
-  // S2T decoder
-
   // FEATURE FUNCTION INITIALIZATION HAPPENS HERE ===============================
+
+  // set class-specific default parameters
+#if defined HAVE_CMPH
+  LexicalReorderingTableCompact::SetStaticDefaultParameters(*parameter);
+  PhraseDictionaryCompact::SetStaticDefaultParameters(*parameter);
+#endif
+
   initialize_features();
 
   if (m_parameter->GetParam("show-weights") == NULL)
@@ -311,8 +308,6 @@ void StaticData::LoadChartDecodingParameters()
   // source label overlap
   m_parameter->SetParameter(m_sourceLabelOverlap, "source-label-overlap",
                             SourceLabelOverlapAdd);
-  m_parameter->SetParameter(m_ruleLimit, "rule-limit",
-                            DEFAULT_MAX_TRANS_OPT_SIZE);
 
 }
 
@@ -427,7 +422,7 @@ LoadDecodeGraphsOld(const vector<string> &mappingVector,
     UTIL_THROW_IF2(decodeStep == NULL, "Null decode step");
     if (m_decodeGraphs.size() < decodeGraphInd + 1) {
       DecodeGraph *decodeGraph;
-      if (IsSyntax()) {
+      if (is_syntax(m_options->search.algo)) {
         size_t maxChartSpan = (decodeGraphInd < maxChartSpans.size()) ? maxChartSpans[decodeGraphInd] : DEFAULT_MAX_CHART_SPAN;
         VERBOSE(1,"max-chart-span: " << maxChartSpans[decodeGraphInd] << endl);
         decodeGraph = new DecodeGraph(m_decodeGraphs.size(), maxChartSpan);
@@ -495,7 +490,7 @@ void StaticData::LoadDecodeGraphsNew(const std::vector<std::string> &mappingVect
     UTIL_THROW_IF2(decodeStep == NULL, "Null decode step");
     if (m_decodeGraphs.size() < decodeGraphInd + 1) {
       DecodeGraph *decodeGraph;
-      if (IsSyntax()) {
+      if (is_syntax(m_options->search.algo)) {
         size_t maxChartSpan = (decodeGraphInd < maxChartSpans.size()) ? maxChartSpans[decodeGraphInd] : DEFAULT_MAX_CHART_SPAN;
         VERBOSE(1,"max-chart-span: " << maxChartSpans[decodeGraphInd] << endl);
         decodeGraph = new DecodeGraph(m_decodeGraphs.size(), maxChartSpan);
@@ -608,7 +603,6 @@ void StaticData::LoadFeatureFunctions()
       m_requireSortingAfterSourceContext = true;
     }
 
-    // if (PhraseDictionary *ffCast = dynamic_cast<PhraseDictionary*>(ff)) {
     if (dynamic_cast<PhraseDictionary*>(ff)) {
       doLoad = false;
     }
@@ -686,8 +680,8 @@ void StaticData::LoadSparseWeightsFromConfig()
     featureNames.insert(descr);
   }
 
-  std::map<std::string, std::vector<float> > weights = m_parameter->GetAllWeights();
-  std::map<std::string, std::vector<float> >::iterator iter;
+  const std::map<std::string, std::vector<float> > &weights = m_parameter->GetAllWeights();
+  std::map<std::string, std::vector<float> >::const_iterator iter;
   for (iter = weights.begin(); iter != weights.end(); ++iter) {
     // this indicates that it is sparse feature
     if (featureNames.find(iter->first) == featureNames.end()) {
@@ -941,6 +935,27 @@ void StaticData::ResetWeights(const std::string &denseWeights, const std::string
     const FeatureFunction &ff = FeatureFunction::FindFeatureFunction(names[0]);
     m_allWeights.Assign(&ff, names[1], Scan<float>(toks[1]));
   }
+}
+
+size_t StaticData::GetCoordSpace(string space) const
+{
+  map<string const, size_t>::const_iterator m = m_coordSpaceMap.find(space);
+  if(m == m_coordSpaceMap.end()) {
+    return 0;
+  }
+  return m->second;
+}
+
+size_t StaticData::MapCoordSpace(string space)
+{
+  map<string const, size_t>::const_iterator m = m_coordSpaceMap.find(space);
+  if (m != m_coordSpaceMap.end()) {
+    return m->second;
+  }
+  size_t id = m_coordSpaceNextID;
+  m_coordSpaceNextID += 1;
+  m_coordSpaceMap[space] = id;
+  return id;
 }
 
 } // namespace
